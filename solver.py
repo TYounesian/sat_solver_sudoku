@@ -22,21 +22,21 @@ def getSudokuFromFile(sudokuPath):
     return cnfs
 
 
-def dpll(cnf, branch=[]):
+def dpll(cnf):
+    cls = []
     while True:
         unitClauses = list(set([c[0] for c in cnf if len(c) == 1]))
-        if not branch: solution.extend(unitClauses)
         if not unitClauses: break
+        cls.extend(unitClauses)
         for p in unitClauses: trimming(p, cnf)
-    if not cnf: return True  # If the set is empty we satisfied it all
+    if not cnf:
+        solution.extend(list(set(cls)))
+        return list(set(solution))  # If the set is empty we satisfied it all
     if not all(cnf): return False  # If a clause is empty it cannot be satisfied
     p = heuristics_DLCS(cnf)
-    if dpll(deepcopy(cnf) + [[p]], branch + [p]):
-        solution.append(p)
-        return solution
-    elif dpll(deepcopy(cnf) + [[-p]], branch + [-p]):
-        solution.append(-p)
-        return solution
+    if dpll(deepcopy(cnf) + [[p]]) or dpll(deepcopy(cnf) + [[-p]]):
+        solution.extend(list(set(cls)))
+        return list(set(solution))
     else: return False
 
 
@@ -52,28 +52,25 @@ def heuristics_DLCS(cnf_heur):
 
 
 def solver_complete(cnf):
-    cnfLoop = cnf[:]
-    for clause in cnfLoop:
-        for a, b in itertools.combinations(clause, 2):
-            if (a + b) == 0: cnf.remove(clause)
-    return dpll(cnf)
+    cnfLoop = cnf[:]                                    # ------------- Needs checking for tautologies -------------
+    for clause in cnfLoop:                              # Looping trough a copy of the input and
+        for a, b in itertools.combinations(clause, 2):  # checking if any of the paris in the clauses sum to 0
+            if (a + b) == 0: cnf.remove(clause)         # ----------------------------------------------------------
+    return dpll(cnf)                                    # ------- Beginning real algorithm
 
 
 r = getRules(rules)
 puzzle = getSudokuFromFile(sudokuSource)[1]
 r = r + puzzle
-# m = list(set([p for c in r for p in c]))
-# m.sort()
-# print(m)
 
 solutions = solver_complete(r)
 print("**********************")
-print(solutions.sort())
-only_numbers = [x for x in solutions if x >= 0]
+print(solutions)
+positives = [x for x in solutions if x >= 0]
 
 print("================")
 print("Solution: ", solutions)
-print(len(solution))
+print(len(solutions))
 print("Puzzle: ", puzzle)
-print("Solution: ", only_numbers)
-print(len(only_numbers))
+print("Solution: ", positives)
+print(len(positives))
