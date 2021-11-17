@@ -1,10 +1,14 @@
 import itertools
 from copy import deepcopy
+import time
+
+
 
 rules = "etc/sudoku-rules-9x9.txt"
 sudokuSource = "etc/damnhard.sdk.txt"
-solution = []
+#sudokuSource = "etc/1000 sudokus.txt"
 
+branches = 0
 # =================================== SETUP - READING FILES ===================================
 
 def getRules(rulePath):
@@ -27,6 +31,7 @@ def getSudokuFromFile(sudokuPath):
 # =================================== DPLL Algorithm ===================================
 
 def dpll(cnf):
+    global branches
     cls = []                                                            # Collects the unit clauses from each iter.
     while True:
         unitClauses = list(set([c[0] for c in cnf if len(c) == 1]))     # Unit clauses are clauses with lenght of 1
@@ -40,33 +45,88 @@ def dpll(cnf):
         solution.extend(list(set(cls)))                 # If the set is empty we satisfied it all
         return list(set(solution))                      # And the unit clauses can be added to the solution
     if not all(cnf): return False                       # If a clause is empty it cannot be satisfied
-    p = heuristics_DLCS(cnf)                            # Choose a heuristic
+    p = heuristics_JWOS(cnf)                            # Choose a heuristic
+    branches += 1
     if dpll(deepcopy(cnf) + [[p]]) or dpll(deepcopy(cnf) + [[-p]]):     # Either branch should be correct
         solution.extend(list(set(cls)))                                 # Add the solution to the set
         return list(set(solution))                                      # Return solutions
     else: return False
 
 
-def heuristics_DLCS(cnf_heur):
-    flat_cnf = [abs(p) for c in cnf_heur for p in c]    # Flatten the cnf
+def heuristics_JWOS(cnf):                               # One-sided Jeroslow-Wang Heuristics
+    weights = {}
+    for clause in cnf:
+        for literal in clause:
+            if literal in weights: weights[literal] += 2 ** -len(clause)
+            else: weights[literal] = 2 ** -len(clause)
+    return max(weights, key=weights.get)                # Return the most frequent predicate
+
+
+def heuristics_JWTS(cnf):                               # Two-sided Jeroslow-Wang Heuristics
+    weights = {}
+    for clause in cnf:
+        for literal in clause:
+            literal = abs(literal)
+            if literal in weights: weights[literal] += 2 ** -len(clause)
+            else: weights[literal] = 2 ** -len(clause)
+    return max(weights, key=weights.get)                # Return the most frequent predicate
+
+
+
+def heuristics_DLCS(cnf):
+    flat_cnf = [abs(p) for c in cnf for p in c]    # Flatten the cnf
     return max(flat_cnf, key=flat_cnf.count)            # Return the most frequent predicate
 
 
+def heuristics_DLCS_2(cnf):
+    weights = {}
+    for clause in cnf:
+        for literal in clause:
+            if literal in weights:
+                weights[literal] += 1
+            else:
+                weights[literal] = 1
+    return max(weights, key=weights.get)            # Return the most frequent predicate
+
+
 def solver_complete(cnf):
-    cnfLoop = cnf[:]                                    # ------------- Needs checking for tautologies -------------
-    for clause in cnfLoop:                              # Looping trough a copy of the input and
+    cnfloop = cnf[:]                                    # ------------- Needs checking for tautologies -------------
+    for clause in cnfloop:                              # Looping trough a copy of the input and
         for a, b in itertools.combinations(clause, 2):  # checking if any of the paris in the clauses sum to 0
             if (a + b) == 0: cnf.remove(clause)         # ----------------------------------------------------------
     return dpll(cnf)                                    # ------- Beginning real algorithm
 
 
+heuristics = {
+    'JWOS': heuristics_JWOS,
+    'JWTS': heuristics_JWTS,
+    'DLCS': heuristics_DLCS,
+    'DLCS_2': heuristics_DLCS_2,
+}
+
 #  =================================== MAIN PROGRAM ===================================
+totaltime = 0
+totalbranches = 0
 
-puzzle = getSudokuFromFile(sudokuSource)[-1]
-solutions = solver_complete(getRules(rules) + puzzle)
-
-#  =================================== SOLUTION CHECK ==================================
-
-print("Puzzle: ", puzzle)
-print("Solution: ", solutions)
-print("Number of solutions", len(solutions))
+puzzles = getSudokuFromFile(sudokuSource)
+loops = 10
+totalsolutions = 0
+for i in range(loops):
+    solution = []
+    puzzle = puzzles[i]
+    start = time.time()
+    solutions = solver_complete(getRules(rules) + puzzle)
+    timetaken = time.time() - start
+    totaltime += timetaken
+    totalbranches += branches
+    totalsolutions += len(solutions)
+    #  =================================== SOLUTION CHECK ==================================
+    print("\n====== Puzzle No. {} ======\n".format(i))
+    print("Puzzle: ", puzzle)
+    print("Solution: ", solutions)
+    print("Number of solutions", len(solutions))
+    print("Branching needed: ", branches)
+    print("Time taken", timetaken)
+print("*"*100)
+print("Average time taken: {}\nAverage branches needed: {}".format(totaltime/loops, totalbranches/loops))
+print(totalsolutions/loops)
