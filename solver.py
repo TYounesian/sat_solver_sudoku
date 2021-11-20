@@ -107,7 +107,7 @@ heuristics = {
 #  =================================== MAIN PROGRAM ===================================
 
 if __name__ == '__main__':
-
+    print()
     rules = "etc/sudoku-rules-9x9.txt"
     # sudokuSource = "etc/damnhard.sdk.txt"
     sudokuSource = "etc/1000 sudokus.txt"
@@ -117,12 +117,14 @@ if __name__ == '__main__':
     totaltime = 0
     totalbranches = 0
 
-    h = 'FIRST'
-
-    heuristic = heuristics[h]
+    try:
+        heuristic = heuristics[sys.argv[1]]
+    except:
+        sys.exit("ERROR: '{}' Not valid heuristic.".format(sys.argv[1]) +
+                 "\nValid heuristics: {}".format(heuristics.keys()))
 
     puzzles = getSudokuFromFile(sudokuSource)
-    loops = 10
+    loops = 5
     totalsolutions = 0
     for i in range(loops):
         solution = []
