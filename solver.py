@@ -2,6 +2,7 @@ import itertools
 from copy import deepcopy
 import time
 import sys
+import csv
 
 # =================================== SETUP - READING FILES ===================================
 
@@ -126,7 +127,7 @@ if __name__ == '__main__':
                  "\nValid heuristics: {}".format(heuristics.keys()))
 
     puzzles = getSudokuFromFile(sudokuSource)
-    loops = 5
+    loops = 30
     totalsolutions = 0
     for i in range(loops):
         solution = []
