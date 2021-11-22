@@ -116,6 +116,8 @@ if __name__ == '__main__':
 
     totaltime = 0
     totalbranches = 0
+    time_per_puzzle = []
+    branch_per_puzzle = []
 
     try:
         heuristic = heuristics[sys.argv[1]]
@@ -133,8 +135,10 @@ if __name__ == '__main__':
         solutions = solver_complete(getRules(rules) + puzzle, heuristic)
         timetaken = time.time() - start
         totaltime += timetaken
+        time_per_puzzle.append(timetaken)
         totalbranches += branches
         totalsolutions += len(solutions)
+        branch_per_puzzle.append(branches)
         #  =================================== SOLUTION CHECK ==================================
         print("\n====== Puzzle No. {} ======\n".format(i))
         print("Puzzle: ", puzzle)
@@ -145,3 +149,12 @@ if __name__ == '__main__':
     print("\n{}\nAverage time taken: {}\nAverage branches needed: {}".format("=" * 100, totaltime / loops,
                                                                              totalbranches / loops))
     print(totalsolutions / loops)
+
+
+with open("time_{}.csv".format(sys.argv[1]),"a+") as f:
+    write = csv.writer(f)
+    write.writerow(time_per_puzzle)
+
+with open("branch_{}.csv".format(sys.argv[1]),"a+") as f:
+    write = csv.writer(f)
+    write.writerow(branch_per_puzzle)
