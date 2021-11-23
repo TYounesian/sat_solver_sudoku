@@ -26,11 +26,10 @@ def getSudokuFromFile(sudokuPath):
 # =================================== DPLL Algorithm ===================================
 
 def dpll(cnf, heuristic):
-    global branches, heur_solution
+    global branches, heur_solution, backtrack
     cls = []                                                            # Collects the unit clauses from each iter.
     while True:
         unitClauses = list(set([c[0] for c in cnf if len(c) == 1]))     # Unit clauses are clauses with lenght of 1
-        #print(cls)
         if not unitClauses: break                                       # Quit if there are no more unit clauses
         cls.extend([x for x in unitClauses if x[0] != '-'])                   # Save only the positive predicates
         for p in unitClauses:
@@ -38,12 +37,12 @@ def dpll(cnf, heuristic):
                 if p in clause: cnf.remove(clause)                      # Delete the clause with the predicate
                 elif neg(p) in clause: cnf[cnf.index(clause)].remove(neg(p))    # Delete the negative of predicate from clause
     heur_solution.extend(list(set(cls)))
-    #print(len(heur_solution), heur_solution)
     if not cnf:
         solution.extend(list(set(cls)))                 # If the set is empty we satisfied it all
         return list(set(solution))                      # And the unit clauses can be added to the solution
     if not all(cnf):
         heur_solution = list(set(heur_solution) - set(cls))
+        backtrack += 1
         return False                       # If a clause is empty it cannot be satisfied
     p = heuristic(cnf)                                  # Choose a heuristic
     branches += 1                                       # Either branch should be correct
@@ -161,7 +160,8 @@ if __name__ == '__main__':
     # sudokuSource = "etc/16x16.txt"
 
     # ---------------- 9 x 9 ----------------
-    rules = "etc/sudoku-rules-9x9.txt"
+    rules = "etc/sudoku-rules-9x9-rev.txt"
+    # rules = "etc/sudoku-rules-9x9.txt"
     sudokuSource = "etc/damnhard.sdk.txt"
     #sudokuSource = "etc/1000 sudokus.txt"
 
@@ -169,7 +169,8 @@ if __name__ == '__main__':
     # rules = "etc/sudoku-rules-4x4.txt"
     # sudokuSource = "etc/4x4.txt"
 
-    branches = 0
+
+    totalbacktrack = 0
     totaltime = 0
     totalbranches = 0
 
@@ -179,12 +180,14 @@ if __name__ == '__main__':
         except:
             sys.exit("ERROR: '{}' Not valid heuristic.".format(sys.argv[1]) +
                      "\nValid heuristics: {}".format(heuristics.keys()))
-    else: heuristic = heuristics['HUMAN']
+    else: heuristic = heuristics['FIRST']
 
     puzzles = getSudokuFromFile(sudokuSource)
     loops = 5
     totalsolutions = 0
     for i in range(loops):
+        backtrack = 0
+        branches = 0
         solution = []
         heur_solution = []
         puzzle = puzzles[i]
@@ -193,6 +196,7 @@ if __name__ == '__main__':
         timetaken = time.time() - start
         totaltime += timetaken
         totalbranches += branches
+        totalbacktrack += backtrack
         if solutions: totalsolutions += len(solutions)
         else:
             print("No solution to puzzle: {}".format(puzzle))
@@ -203,6 +207,7 @@ if __name__ == '__main__':
         print("Solution: ", solutions)
         print("Number of solutions", len(solutions))
         print("Branching needed: ", branches)
+        print("Backtracking needed: ", backtrack)
         print("Time taken", timetaken)
-    print("\n{}\nAvg time: {}\nAvg branches: {}".format("=" * 100, totaltime / loops, totalbranches / loops))
+    print("\n{}\nAvg time: {}\nAvg branches: {}\nAvg backtrack: {}".format("=" * 100, totaltime / loops, totalbranches / loops, totalbacktrack / loops))
     print(totalsolutions / loops)
