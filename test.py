@@ -7,7 +7,21 @@ import random
 # =================================== SETUP - READING FILES ===================================
 
 def getRules(rulePath):
-    return [line[:-3].split(' ') for line in open(rulePath, "r")][1:]               # Returns the clauses as lists of integers
+    if "16" in rulePath:
+        c16 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G']
+        rules = []
+        for line in open("etc/sudoku-rules-16x16.txt", "r"):
+            if line[0] == 'p': continue
+            clause = line[:-3].split(" ")
+            newclause = []
+            for c in clause:
+                neg = "-" * (int(c) < 0)            # - sign needed if the predicate is less than 0
+                nf = neg + c16[abs(int(c)) // 17**2] + c16[abs(int(c)) % 17**2 // 17] + c16[abs(int(c) % 17**2) % 17]
+                newclause.append(nf)
+            rules.append(newclause)
+        return rules
+
+    else: return [line[:-3].split(' ') for line in open(rulePath, "r")][1:] # Returns the clauses as lists of integers
 
 
 def getSudokuFromFile(sudokuPath):
@@ -156,13 +170,13 @@ if __name__ == '__main__':
 
 
     # --------------- 16 x 16 ---------------
-    # rules = "etc/sudoku-rules-16x16.txt"
-    # sudokuSource = "etc/16x16.txt"
+    rules = "etc/sudoku-rules-16x16.txt"
+    sudokuSource = "etc/16x16.txt"
 
     # ---------------- 9 x 9 ----------------
-    rules = "etc/sudoku-rules-9x9-rev.txt"
+    # rules = "etc/sudoku-rules-9x9-rev.txt"
     # rules = "etc/sudoku-rules-9x9.txt"
-    sudokuSource = "etc/damnhard.sdk.txt"
+    # sudokuSource = "etc/damnhard.sdk.txt"
     #sudokuSource = "etc/1000 sudokus.txt"
 
     # ---------------- 4 x 4 ----------------
@@ -181,9 +195,8 @@ if __name__ == '__main__':
             sys.exit("ERROR: '{}' Not valid heuristic.".format(sys.argv[1]) +
                      "\nValid heuristics: {}".format(heuristics.keys()))
     else: heuristic = heuristics['FIRST']
-
     puzzles = getSudokuFromFile(sudokuSource)
-    loops = 5
+    loops = 1
     totalsolutions = 0
     for i in range(loops):
         backtrack = 0
