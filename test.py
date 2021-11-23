@@ -71,18 +71,31 @@ def heuristics_HUMAN(cnf):
     """
     Looks for clauses with the most filled out rows and columns
     """
-    global heur_solution
+    global heur_solution, rules
     #
+    size = rules.split('x')[1][0]
     rows = {}
     cols = {}
-    cubes = {}
     for literal in heur_solution:
-        if literal[0] in rows: rows[literal[0]]+= 1
+        if literal[0] in rows:
+            rows[literal[0]]+= 1
+            if rows[literal[0]] == int(size): del rows[literal[0]]           # Row is full, remove from options
         else: rows[literal[0]] = 1
-        if literal[1] in cols: cols[literal[1]]+= 1
+        if literal[1] in cols:
+            cols[literal[1]] += 1
+            if cols[literal[1]] == int(size): del cols[literal[1]]  # Row is full, remove from options
         else: cols[literal[1]] = 1
-    max(rows, key=rows.get)
-    max(cols, key=cols.get)
+
+    # Look through the literals and give them a weight based on how filled out their column and row is
+    weights = {}
+    for clause in cnf:
+        for literal in clause:
+            if literal not in weights:
+                if literal[-3] in rows: w = rows[literal[-3]]
+                else: w = 0
+                if literal[-2] in cols: w += cols[literal[-2]]
+                weights[literal] = w
+    return max(weights, key=weights.get)            # Return the most frequent predicate
 
 def heuristics_JWOS(cnf):                               # One-sided Jeroslow-Wang Heuristics
     weights = {}
@@ -150,7 +163,7 @@ if __name__ == '__main__':
     # ---------------- 9 x 9 ----------------
     rules = "etc/sudoku-rules-9x9.txt"
     sudokuSource = "etc/damnhard.sdk.txt"
-    # sudokuSource = "etc/1000 sudokus.txt"
+    #sudokuSource = "etc/1000 sudokus.txt"
 
     # ---------------- 4 x 4 ----------------
     # rules = "etc/sudoku-rules-4x4.txt"
@@ -166,10 +179,10 @@ if __name__ == '__main__':
         except:
             sys.exit("ERROR: '{}' Not valid heuristic.".format(sys.argv[1]) +
                      "\nValid heuristics: {}".format(heuristics.keys()))
-    else: heuristic = heuristics['RAND']
+    else: heuristic = heuristics['HUMAN']
 
     puzzles = getSudokuFromFile(sudokuSource)
-    loops = 1
+    loops = 5
     totalsolutions = 0
     for i in range(loops):
         solution = []
