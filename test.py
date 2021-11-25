@@ -3,7 +3,8 @@ from copy import deepcopy
 import time
 import sys
 import random
-
+import pandas as pd
+from datetime import date, datetime
 # =================================== SETUP - READING FILES ===================================
 
 def getRules(rulePath):
@@ -110,6 +111,7 @@ def heuristics_HUMAN(cnf):
                 weights[literal] = w
     return max(weights, key=weights.get)            # Return the most frequent predicate
 
+
 def heuristics_JWOS(cnf):                               # One-sided Jeroslow-Wang Heuristics
     weights = {}
     for clause in cnf:
@@ -123,15 +125,10 @@ def heuristics_JWTS(cnf):                               # Two-sided Jeroslow-Wan
     weights = {}
     for clause in cnf:
         for literal in clause:
-            literal = abs(literal)
+            if literal[0] == '-': literal = literal[1:]
             if literal in weights: weights[literal] += 2 ** -len(clause)
             else: weights[literal] = 2 ** -len(clause)
     return max(weights, key=weights.get)                # Return the most frequent predicate
-
-
-def heuristics_DLCS(cnf):                               # Dynamic Largest Combined Sum
-    flat_cnf = [abs(p) for c in cnf for p in c]         # Flatten the cnf
-    return max(flat_cnf, key=flat_cnf.count)            # Return the most frequent predicate
 
 
 def heuristics_FIRST(cnf):                              # First predicate we encounter
@@ -143,7 +140,8 @@ def heuristics_RAND(cnf):                               # Returns a random predi
     rp = random.randrange(0, len(cnf[rc]))                  # Random predicate
     return cnf[rc][rp]                                    # Return the first predicate from the first clause
 
-def heuristics_DLCS_2(cnf):
+
+def heuristics_DLCS(cnf):
     weights = {}
     for clause in cnf:
         for literal in clause:
@@ -159,7 +157,6 @@ heuristics = {
     'JWOS': heuristics_JWOS,
     'JWTS': heuristics_JWTS,
     'DLCS': heuristics_DLCS,
-    'DLCS_2': heuristics_DLCS_2,
     'FIRST': heuristics_FIRST,
     'RAND' : heuristics_RAND
 }
@@ -170,23 +167,22 @@ if __name__ == '__main__':
 
 
     # --------------- 16 x 16 ---------------
-    rules = "etc/sudoku-rules-16x16.txt"
-    sudokuSource = "etc/16x16.txt"
+    rules_16x16 = "etc/sudoku-rules-16x16.txt"
+    # sudokuSource = "etc/16x16.txt"
 
     # ---------------- 9 x 9 ----------------
     # rules = "etc/sudoku-rules-9x9-rev.txt"
-    # rules = "etc/sudoku-rules-9x9.txt"
+    rules_9x9 = "etc/sudoku-rules-9x9.txt"
     # sudokuSource = "etc/damnhard.sdk.txt"
-    #sudokuSource = "etc/1000 sudokus.txt"
+    sudokuSource = "etc/1000 sudokus.txt"
 
     # ---------------- 4 x 4 ----------------
-    # rules = "etc/sudoku-rules-4x4.txt"
+    rules_4x4 = "etc/sudoku-rules-4x4.txt"
     # sudokuSource = "etc/4x4.txt"
 
+    df = pd.DataFrame(columns = ["heuristic", "puzzle ID", "time taken", "puzzle", "solution", "backtracking", "branches", "clues given"])
 
-    totalbacktrack = 0
-    totaltime = 0
-    totalbranches = 0
+    heuristicName = 'FIRST'
 
     if len(sys.argv) > 1:
         try:
@@ -194,33 +190,46 @@ if __name__ == '__main__':
         except:
             sys.exit("ERROR: '{}' Not valid heuristic.".format(sys.argv[1]) +
                      "\nValid heuristics: {}".format(heuristics.keys()))
-    else: heuristic = heuristics['FIRST']
-    puzzles = getSudokuFromFile(sudokuSource)
-    loops = 1
-    totalsolutions = 0
-    for i in range(loops):
-        backtrack = 0
-        branches = 0
-        solution = []
-        heur_solution = []
-        puzzle = puzzles[i]
-        start = time.time()
-        solutions = solver_complete(getRules(rules) + puzzle, heuristic)
-        timetaken = time.time() - start
-        totaltime += timetaken
-        totalbranches += branches
-        totalbacktrack += backtrack
-        if solutions: totalsolutions += len(solutions)
-        else:
-            print("No solution to puzzle: {}".format(puzzle))
-            break
-        #  =================================== SOLUTION CHECK ==================================
-        print("\n====== Puzzle No. {} ======\n".format(i))
-        print("Puzzle: ", puzzle)
-        print("Solution: ", solutions)
-        print("Number of solutions", len(solutions))
-        print("Branching needed: ", branches)
-        print("Backtracking needed: ", backtrack)
-        print("Time taken", timetaken)
-    print("\n{}\nAvg time: {}\nAvg branches: {}\nAvg backtrack: {}".format("=" * 100, totaltime / loops, totalbranches / loops, totalbacktrack / loops))
-    print(totalsolutions / loops)
+    else: heuristic = heuristics[heuristicName]
+
+    puzzlefiles = {"etc/1000 sudokus.txt" : rules_9x9, "etc/4x4.txt" : rules_4x4, "etc/damnhard.sdk.txt": rules_9x9}
+    tests = 30
+
+
+    for puzzlesource in puzzlefiles.keys():
+        puzzles = getSudokuFromFile(puzzlesource)
+        rules = puzzlefiles[puzzlesource]
+        puzzleName = puzzlesource.split('/')[-1].split(".")[0]
+        for heur in heuristics.keys():
+            for i in range(1,tests+1):
+                puzzle_ID = puzzleName + '-' + str(i)
+                heuristic = heuristics[heur]
+                print("\n====== Puzzle {} with {} heuristics ======\n".format(puzzle_ID, heur))
+                backtrack = 0
+                branches = 0
+                solution = []
+                heur_solution = []
+                puzzle = puzzles[i]
+                start = time.time()
+                solutions = solver_complete(getRules(rules) + puzzle, heuristic)
+                timetaken = time.time() - start
+                testrun = [heur, puzzle_ID, timetaken, backtrack, branches, len(puzzle), puzzle, solutions]
+                if not solutions:
+                    print("No solution to puzzle: {}".format(puzzle))
+                    break
+                #  =================================== SOLUTION CHECK ==================================
+
+                a_series = pd.Series(testrun, index=df.columns)
+                df = df.append(a_series, ignore_index=True)
+
+                print("Puzzle: ", puzzle)
+                print("Solution: ", solutions)
+                print("Number of solutions", len(solutions))
+                print("Branching needed: ", branches)
+                print("Backtracking needed: ", backtrack)
+                print("Time taken", timetaken)
+
+    today = date.today().strftime("%d-%m-%Y")
+    current_time = datetime.now().strftime("%H-%M-%S")
+    filename = today + current_time + '-tests.csv'
+    df.to_csv('tests/' + filename)
